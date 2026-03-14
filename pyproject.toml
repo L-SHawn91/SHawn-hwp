@@ -1,0 +1,11 @@
+[project]
+name = "shawn-hwp"
+version = "0.1.0"
+description = "Quality-first HWP/HWPX, DOCX, Markdown conversion and QA pipeline"
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [{ name = "L-SHawn91" }]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

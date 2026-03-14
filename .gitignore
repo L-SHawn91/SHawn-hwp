@@ -1,9 +1,6 @@
 __pycache__/
 *.pyc
-.env
 .venv/
-node_modules/
+.pytest_cache/
+outputs/
 .DS_Store
-*.log
-*.tmp
-*.bak
