@@ -13,6 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from shawn_hwp.converters.stub import run_stub_conversion
 from shawn_hwp.qa.reporting import generate_qa_result, render_markdown_report
 
 
@@ -40,10 +41,7 @@ def _fixture_source_path(fixture_dir: Path, source_format: str) -> Path:
 
 
 def _fixture_candidate_path(fixture_dir: Path, target_format: str) -> Path:
-    candidate = fixture_dir / f"candidate.{target_format}"
-    if candidate.exists():
-        return candidate
-    return fixture_dir / f"source.{target_format}"
+    return fixture_dir / f"candidate.{target_format}"
 
 
 def main() -> int:
@@ -56,11 +54,20 @@ def main() -> int:
         raise SystemExit(f"fixture not found: {fixture_dir}")
     if not source.exists():
         raise SystemExit(f"fixture source not found: {source}")
-    if not candidate.exists():
-        raise SystemExit(f"fixture candidate not found: {candidate}")
 
     run_dir = args.outdir / args.fixture / args.candidate
     run_dir.mkdir(parents=True, exist_ok=True)
+
+    generated_candidate_path = run_dir / f"converted_candidate.{args.target_format}"
+    if not candidate.exists():
+        run_stub_conversion(
+            input_path=source,
+            output_path=generated_candidate_path,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            preserve_original=True,
+        )
+        candidate = generated_candidate_path
 
     report_path = run_dir / "qa_report.md"
     json_path = run_dir / "qa_report.json"
