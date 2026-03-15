@@ -46,8 +46,23 @@ def test_image_caption_fixture_runs_cleanly(tmp_path: Path):
     assert payload["comparisons"]["heading_similarity"] == 1.0
 
 
-def test_footnote_heavy_fixture_detects_text_loss(tmp_path: Path):
+def test_footnote_heavy_fixture_detects_footnote_loss(tmp_path: Path):
     payload, manifest = run_benchmark(tmp_path, "footnote-heavy")
     assert manifest["fixture"] == "footnote-heavy"
     assert payload["weighted_score"] < 100
-    assert payload["metrics"]["text"] < 25
+    assert payload["metrics"]["footnote_numbering"] < 10
+    assert payload["comparisons"]["footnote_similarity"] < 1.0
+
+
+def test_numbering_heavy_fixture_detects_numbering_drift(tmp_path: Path):
+    payload, manifest = run_benchmark(tmp_path, "numbering-heavy")
+    assert manifest["fixture"] == "numbering-heavy"
+    assert payload["metrics"]["footnote_numbering"] < 10
+    assert payload["comparisons"]["numbering_similarity"] < 1.0
+
+
+def test_submission_template_fixture_detects_submission_loss(tmp_path: Path):
+    payload, manifest = run_benchmark(tmp_path, "submission-template")
+    assert manifest["fixture"] == "submission-template"
+    assert payload["metrics"]["submission"] < 10
+    assert payload["comparisons"]["submission_similarity"] < 1.0

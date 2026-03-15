@@ -56,8 +56,12 @@ def test_generate_qa_result_and_render(tmp_path: Path):
     assert result.readiness == "near submission-ready"
     assert result.metrics["structure"] == 20
     assert result.metrics["table"] == 15
+    assert result.metrics["footnote_numbering"] == 10
+    assert result.metrics["submission"] == 10
     assert result.comparisons["source_heading_count"] == 2
     assert result.comparisons["source_table_count"] >= 2
+    assert result.comparisons["numbering_similarity"] == 1.0
+    assert result.comparisons["footnote_similarity"] == 1.0
 
     report = render_markdown_report(result)
     assert "# SHawn-hwp QA Report" in report
