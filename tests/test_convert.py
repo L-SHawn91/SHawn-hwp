@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from shawn_hwp.converters.pandoc_engine import pandoc_available
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
@@ -51,9 +52,15 @@ def test_convert_cli_writes_output_and_metadata(tmp_path: Path):
     assert "SHawn-hwp convert" in result.stdout
     assert output.exists()
     assert metadata.exists()
-    assert "converted by SHawn-hwp stub" in output.read_text(encoding="utf-8")
 
     payload = json.loads(metadata.read_text(encoding="utf-8"))
     assert payload["source_format"] == "md"
     assert payload["target_format"] == "docx"
     assert payload["preserve_original"] is True
+
+    if pandoc_available():
+        assert "engine=pandoc" in result.stdout
+        assert output.read_bytes()[:2] == b"PK"
+    else:
+        assert "engine=stub" in result.stdout
+        assert "converted by SHawn-hwp stub" in output.read_text(encoding="utf-8")

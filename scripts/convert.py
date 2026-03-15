@@ -13,6 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from shawn_hwp.converters.pandoc_engine import pandoc_available, run_pandoc_conversion
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
@@ -34,15 +35,35 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    result = run_stub_conversion(
-        input_path=args.input,
-        output_path=args.output,
-        source_format=args.source_format,
-        target_format=args.target_format,
-        route=args.route,
-        template=args.template,
-        preserve_original=args.preserve_original,
+
+    use_pandoc = (
+        pandoc_available()
+        and args.source_format in {"md", "html", "docx"}
+        and args.target_format in {"md", "html", "docx"}
     )
+
+    if use_pandoc:
+        result = run_pandoc_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "pandoc"
+    else:
+        result = run_stub_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "stub"
 
     if args.emit_metadata:
         args.emit_metadata.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +73,7 @@ def main() -> int:
         )
 
     print("SHawn-hwp convert")
+    print(f"engine={engine}")
     print(f"input={args.input}")
     print(f"source_format={args.source_format}")
     print(f"target_format={args.target_format}")
