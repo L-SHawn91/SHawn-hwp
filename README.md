@@ -20,12 +20,14 @@ SHawn-hwp exists to solve that.
 
 ## Core goal
 
-Build a reproducible, quality-oriented, bidirectional conversion system for:
+Build a reproducible, quality-oriented, bidirectional conversion system centered on:
 
 - `HWP/HWPX -> DOCX`
 - `HWP/HWPX -> Markdown`
+- `HWP -> HWPX` and `HWPX -> HWP` where feasible
 - `DOCX -> HWPX`
 - `Markdown -> HWPX`
+- `DOCX/Markdown -> HWP` where feasible
 
 while preserving originals, tracking loss, and producing QA reports that explain whether the output is safe for editing, versioning, or submission.
 
