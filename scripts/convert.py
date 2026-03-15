@@ -14,6 +14,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from shawn_hwp.converters.pandoc_engine import pandoc_available, run_pandoc_conversion
+from shawn_hwp.converters.soffice_engine import soffice_available, run_soffice_conversion
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
@@ -41,6 +42,11 @@ def main() -> int:
         and args.source_format in {"md", "html", "docx"}
         and args.target_format in {"md", "html", "docx"}
     )
+    use_soffice = (
+        soffice_available()
+        and args.source_format in {"docx", "hwp", "hwpx"}
+        and args.target_format in {"pdf", "html", "docx"}
+    )
 
     if use_pandoc:
         result = run_pandoc_conversion(
@@ -53,6 +59,17 @@ def main() -> int:
             preserve_original=args.preserve_original,
         )
         engine = "pandoc"
+    elif use_soffice:
+        result = run_soffice_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "soffice"
     else:
         result = run_stub_conversion(
             input_path=args.input,

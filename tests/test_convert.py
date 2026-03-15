@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from shawn_hwp.converters.pandoc_engine import pandoc_available
+from shawn_hwp.converters.soffice_engine import soffice_available
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
