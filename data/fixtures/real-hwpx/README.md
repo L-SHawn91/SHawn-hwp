@@ -10,3 +10,11 @@ Rules:
 - preserve the original file untouched
 - do not overwrite the original fixture file
 - generated outputs must go to run directories only
+
+Quick start:
+```bash
+python3 scripts/validate_real_fixture_batch.py \
+  --fixture real-hwpx \
+  --from hwpx \
+  --outdir /tmp/shawn-hwp-real-runs
+```
