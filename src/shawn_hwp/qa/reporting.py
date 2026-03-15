@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -33,45 +35,103 @@ class QaResult:
     readiness: str
     risk_categories: list[str]
     metrics: dict[str, int]
+    comparisons: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def _score_text(source: Path, candidate: Path) -> int:
-    if not source.exists() or not candidate.exists():
-        return 0
-    if source.stat().st_size == 0 or candidate.stat().st_size == 0:
-        return 0
-    return WEIGHTS["text"]
+def _safe_read_text(path: Path) -> str:
+    if not path.exists() or path.stat().st_size == 0:
+        return ""
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="utf-8", errors="ignore")
 
 
-def _score_structure(source_format: str, candidate_format: str) -> int:
-    if source_format == candidate_format:
-        return WEIGHTS["structure"]
-    if {source_format, candidate_format} <= {"hwpx", "docx", "md", "html"}:
-        return 15
-    return 10
+def _normalize_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 
-def _score_category(source: Path, candidate: Path, category: str) -> int:
-    if not source.exists() or not candidate.exists():
-        return 0
-    if candidate.stat().st_size == 0:
-        return 0
-    return WEIGHTS[category]
+def _extract_markdown_headings(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.lstrip().startswith("#")]
 
 
-def _build_metrics(source: Path, candidate: Path, source_format: str, candidate_format: str) -> dict[str, int]:
+def _count_markdown_tables(text: str) -> int:
+    return sum(1 for line in text.splitlines() if "|" in line and line.count("|") >= 2)
+
+
+def _text_similarity(source_text: str, candidate_text: str) -> float:
+    if not source_text or not candidate_text:
+        return 0.0
+    return SequenceMatcher(None, _normalize_text(source_text), _normalize_text(candidate_text)).ratio()
+
+
+def _heading_similarity(source_text: str, candidate_text: str) -> float:
+    source_headings = _extract_markdown_headings(source_text)
+    candidate_headings = _extract_markdown_headings(candidate_text)
+    if not source_headings and not candidate_headings:
+        return 1.0
+    if not source_headings or not candidate_headings:
+        return 0.0
+    return SequenceMatcher(None, "\n".join(source_headings), "\n".join(candidate_headings)).ratio()
+
+
+def _table_similarity(source_text: str, candidate_text: str) -> float:
+    source_tables = _count_markdown_tables(source_text)
+    candidate_tables = _count_markdown_tables(candidate_text)
+    if source_tables == 0 and candidate_tables == 0:
+        return 1.0
+    if source_tables == 0 or candidate_tables == 0:
+        return 0.0
+    gap = abs(source_tables - candidate_tables)
+    return max(0.0, 1.0 - (gap / max(source_tables, candidate_tables)))
+
+
+def _score_ratio(weight: int, ratio: float) -> int:
+    ratio = min(1.0, max(0.0, ratio))
+    return int(round(weight * ratio))
+
+
+def _build_comparisons(source: Path, candidate: Path) -> dict[str, Any]:
+    source_text = _safe_read_text(source)
+    candidate_text = _safe_read_text(candidate)
     return {
-        "text": _score_text(source, candidate),
-        "structure": _score_structure(source_format, candidate_format),
-        "table": _score_category(source, candidate, "table"),
-        "image_caption": _score_category(source, candidate, "image_caption"),
-        "footnote_numbering": _score_category(source, candidate, "footnote_numbering"),
-        "submission": _score_category(source, candidate, "submission"),
-        "roundtrip": WEIGHTS["roundtrip"] if source.exists() and candidate.exists() and candidate.stat().st_size > 0 else 0,
+        "text_similarity": round(_text_similarity(source_text, candidate_text), 4),
+        "heading_similarity": round(_heading_similarity(source_text, candidate_text), 4),
+        "source_heading_count": len(_extract_markdown_headings(source_text)),
+        "candidate_heading_count": len(_extract_markdown_headings(candidate_text)),
+        "table_similarity": round(_table_similarity(source_text, candidate_text), 4),
+        "source_table_count": _count_markdown_tables(source_text),
+        "candidate_table_count": _count_markdown_tables(candidate_text),
     }
+
+
+def _build_metrics(source: Path, candidate: Path, source_format: str, candidate_format: str) -> tuple[dict[str, int], dict[str, Any]]:
+    comparisons = _build_comparisons(source, candidate)
+    source_exists = source.exists() and source.stat().st_size > 0
+    candidate_exists = candidate.exists() and candidate.stat().st_size > 0
+
+    text_score = _score_ratio(WEIGHTS["text"], comparisons["text_similarity"])
+    structure_ratio = comparisons["heading_similarity"]
+    if source_format != candidate_format:
+        structure_ratio *= 0.9
+    structure_score = _score_ratio(WEIGHTS["structure"], structure_ratio)
+    table_score = _score_ratio(WEIGHTS["table"], comparisons["table_similarity"])
+
+    metrics = {
+        "text": text_score if source_exists and candidate_exists else 0,
+        "structure": structure_score if source_exists and candidate_exists else 0,
+        "table": table_score if source_exists and candidate_exists else 0,
+        "image_caption": WEIGHTS["image_caption"] if candidate_exists else 0,
+        "footnote_numbering": WEIGHTS["footnote_numbering"] if candidate_exists else 0,
+        "submission": WEIGHTS["submission"] if candidate_exists else 0,
+        "roundtrip": WEIGHTS["roundtrip"] if source_exists and candidate_exists else 0,
+    }
+    return metrics, comparisons
 
 
 def classify_readiness(score: int) -> str:
@@ -96,7 +156,7 @@ def generate_qa_result(
     candidate_format: str,
     label: str | None = None,
 ) -> QaResult:
-    metrics = _build_metrics(source, candidate, source_format, candidate_format)
+    metrics, comparisons = _build_metrics(source, candidate, source_format, candidate_format)
     score = sum(metrics.values())
     return QaResult(
         source=str(source),
@@ -113,6 +173,7 @@ def generate_qa_result(
         readiness=classify_readiness(score),
         risk_categories=top_risk_categories(metrics),
         metrics=metrics,
+        comparisons=comparisons,
     )
 
 
@@ -139,6 +200,16 @@ def render_markdown_report(result: QaResult) -> str:
     for category, value in result.metrics.items():
         lines.append(f"| {category} | {value} | {WEIGHTS[category]} |")
     lines.extend([
+        "",
+        "## Comparisons",
+        "",
+        f"- text similarity: `{result.comparisons['text_similarity']}`",
+        f"- heading similarity: `{result.comparisons['heading_similarity']}`",
+        f"- source heading count: `{result.comparisons['source_heading_count']}`",
+        f"- candidate heading count: `{result.comparisons['candidate_heading_count']}`",
+        f"- table similarity: `{result.comparisons['table_similarity']}`",
+        f"- source table count: `{result.comparisons['source_table_count']}`",
+        f"- candidate table count: `{result.comparisons['candidate_table_count']}`",
         "",
         "## Top Risks",
         "",

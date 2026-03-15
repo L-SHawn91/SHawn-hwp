@@ -11,6 +11,32 @@ from shawn_hwp.qa.reporting import classify_readiness, generate_qa_result, rende
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+SOURCE_TEXT = """# Title
+
+## Section A
+Hello world
+
+| A | B |
+|---|---|
+| 1 | 2 |
+"""
+
+CANDIDATE_GOOD = """# Title
+
+## Section A
+Hello world updated
+
+| A | B |
+|---|---|
+| 1 | 2 |
+"""
+
+CANDIDATE_BAD = """Plain paragraph only
+No headings
+No table
+"""
+
+
 def test_classify_readiness():
     assert classify_readiness(95) == "near submission-ready"
     assert classify_readiness(82) == "minor repair needed"
@@ -19,31 +45,47 @@ def test_classify_readiness():
 
 
 def test_generate_qa_result_and_render(tmp_path: Path):
-    source = tmp_path / "source.hwpx"
-    candidate = tmp_path / "candidate.docx"
-    source.write_text("original content", encoding="utf-8")
-    candidate.write_text("converted content", encoding="utf-8")
+    source = tmp_path / "source.md"
+    candidate = tmp_path / "candidate.md"
+    source.write_text(SOURCE_TEXT, encoding="utf-8")
+    candidate.write_text(CANDIDATE_GOOD, encoding="utf-8")
 
-    result = generate_qa_result(source, candidate, "hwpx", "docx", label="fixture-a")
+    result = generate_qa_result(source, candidate, "md", "md", label="fixture-a")
 
-    assert result.weighted_score == 95
+    assert result.weighted_score >= 95
     assert result.readiness == "near submission-ready"
-    assert result.metrics["structure"] == 15
-    assert result.risk_categories == ["structure"]
+    assert result.metrics["structure"] == 20
+    assert result.metrics["table"] == 15
+    assert result.comparisons["source_heading_count"] == 2
+    assert result.comparisons["source_table_count"] >= 2
 
     report = render_markdown_report(result)
     assert "# SHawn-hwp QA Report" in report
     assert "fixture-a" in report
-    assert "**95/100**" in report
+    assert "text similarity" in report
+
+
+def test_generate_qa_result_detects_structure_and_table_loss(tmp_path: Path):
+    source = tmp_path / "source.md"
+    candidate = tmp_path / "candidate.md"
+    source.write_text(SOURCE_TEXT, encoding="utf-8")
+    candidate.write_text(CANDIDATE_BAD, encoding="utf-8")
+
+    result = generate_qa_result(source, candidate, "md", "md")
+
+    assert result.metrics["structure"] == 0
+    assert result.metrics["table"] == 0
+    assert "structure" in result.risk_categories
+    assert "table" in result.risk_categories
 
 
 def test_cli_writes_report_and_json(tmp_path: Path):
-    source = tmp_path / "source.hwpx"
-    candidate = tmp_path / "candidate.docx"
+    source = tmp_path / "source.md"
+    candidate = tmp_path / "candidate.md"
     report = tmp_path / "report.md"
     json_path = tmp_path / "report.json"
-    source.write_text("original content", encoding="utf-8")
-    candidate.write_text("converted content", encoding="utf-8")
+    source.write_text(SOURCE_TEXT, encoding="utf-8")
+    candidate.write_text(CANDIDATE_GOOD, encoding="utf-8")
 
     cmd = [
         sys.executable,
@@ -53,9 +95,9 @@ def test_cli_writes_report_and_json(tmp_path: Path):
         "--candidate",
         str(candidate),
         "--source-format",
-        "hwpx",
+        "md",
         "--candidate-format",
-        "docx",
+        "md",
         "--report",
         str(report),
         "--json",
@@ -68,8 +110,9 @@ def test_cli_writes_report_and_json(tmp_path: Path):
     assert "near submission-ready" in result.stdout
     assert report.exists()
     assert json_path.exists()
-    assert "95/100" in report.read_text(encoding="utf-8")
+    assert "heading similarity" in report.read_text(encoding="utf-8")
 
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["label"] == "smoke"
-    assert payload["weighted_score"] == 95
+    assert payload["comparisons"]["source_heading_count"] == 2
+    assert payload["metrics"]["table"] == 15
