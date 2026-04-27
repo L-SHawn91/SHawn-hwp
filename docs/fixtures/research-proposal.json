@@ -1,0 +1,42 @@
+{
+  "project_title": "Endometrial organoid platform for regenerative screening",
+  "principal_investigator": "PI Name",
+  "host_institution": "Host Institution",
+  "sections": [
+    {
+      "id": "need",
+      "title": "1. 연구개발 필요성",
+      "body": "Define the unmet need, disease/research context, and why this work must be funded now."
+    },
+    {
+      "id": "objectives",
+      "title": "2. 연구목표",
+      "body": "State the central hypothesis, final goal, annual milestones, and measurable deliverables."
+    },
+    {
+      "id": "innovation",
+      "title": "3. 창의성 및 혁신성",
+      "body": "Explain what is novel compared with existing methods, models, or clinical/research workflows."
+    },
+    {
+      "id": "methods",
+      "title": "4. 연구내용 및 방법",
+      "body": "Describe experimental design, datasets/samples, analysis plan, risk controls, and validation strategy."
+    },
+    {
+      "id": "timeline",
+      "title": "5. 추진일정",
+      "body": "Map work packages to months/years, milestones, dependencies, and go/no-go criteria."
+    },
+    {
+      "id": "expected_outcomes",
+      "title": "6. 기대효과",
+      "body": "Describe scientific outputs, translational potential, publications/IP, infrastructure, and follow-up funding routes."
+    },
+    {
+      "id": "references",
+      "title": "7. 참고문헌",
+      "body": "Use author, year, title, DOI format when available."
+    }
+  ]
+}

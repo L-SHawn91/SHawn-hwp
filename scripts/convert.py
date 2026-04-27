@@ -13,12 +13,28 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from shawn_hwp.converters.hwp_engine import (
+    hwp_bridge_available,
+    hwp_salvage_available,
+    run_hwp_to_docx_conversion,
+    run_hwp_to_hwpx_bridge_conversion,
+    run_hwp_to_md_conversion,
+    run_hwp_to_txt_conversion,
+)
+from shawn_hwp.converters.hwpx_engine import (
+    hwpx_available,
+    hwpx_docx_available,
+    run_docx_to_hwpx_conversion,
+    run_hwpx_to_docx_conversion,
+    run_hwpx_to_md_conversion,
+    run_md_to_hwpx_conversion,
+)
 from shawn_hwp.converters.pandoc_engine import pandoc_available, run_pandoc_conversion
 from shawn_hwp.converters.soffice_engine import soffice_available, run_soffice_conversion
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
-VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "pdf", "html"]
+VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "txt", "pdf", "html"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,19 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
 
-    use_pandoc = (
-        pandoc_available()
-        and args.source_format in {"md", "html", "docx"}
-        and args.target_format in {"md", "html", "docx"}
-    )
-    use_soffice = (
-        soffice_available()
-        and args.source_format in {"docx", "hwp", "hwpx"}
-        and args.target_format in {"pdf", "html", "docx"}
-    )
-
-    if use_pandoc:
-        result = run_pandoc_conversion(
+    if args.source_format == "hwp" and args.target_format == "txt" and hwp_salvage_available():
+        result = run_hwp_to_txt_conversion(
             input_path=args.input,
             output_path=args.output,
             source_format=args.source_format,
@@ -58,9 +63,9 @@ def main() -> int:
             template=args.template,
             preserve_original=args.preserve_original,
         )
-        engine = "pandoc"
-    elif use_soffice:
-        result = run_soffice_conversion(
+        engine = "hwp-salvage"
+    elif args.source_format == "hwp" and args.target_format == "md" and hwp_salvage_available():
+        result = run_hwp_to_md_conversion(
             input_path=args.input,
             output_path=args.output,
             source_format=args.source_format,
@@ -69,18 +74,118 @@ def main() -> int:
             template=args.template,
             preserve_original=args.preserve_original,
         )
-        engine = "soffice"
+        engine = "hwp-salvage"
+    elif args.source_format == "hwp" and args.target_format == "docx" and hwp_salvage_available():
+        result = run_hwp_to_docx_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwp-salvage"
+    elif args.source_format == "hwp" and args.target_format == "hwpx" and hwp_bridge_available():
+        result = run_hwp_to_hwpx_bridge_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwp-bridge"
+    elif args.source_format == "hwpx" and args.target_format == "md" and hwpx_available():
+        result = run_hwpx_to_md_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwpx-native"
+    elif args.source_format == "hwpx" and args.target_format == "docx" and hwpx_docx_available():
+        result = run_hwpx_to_docx_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwpx-native"
+    elif args.source_format == "md" and args.target_format == "hwpx" and hwpx_available():
+        result = run_md_to_hwpx_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwpx-native"
+    elif args.source_format == "docx" and args.target_format == "hwpx" and hwpx_docx_available():
+        result = run_docx_to_hwpx_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "hwpx-native"
     else:
-        result = run_stub_conversion(
-            input_path=args.input,
-            output_path=args.output,
-            source_format=args.source_format,
-            target_format=args.target_format,
-            route=args.route,
-            template=args.template,
-            preserve_original=args.preserve_original,
+        use_pandoc = (
+            pandoc_available()
+            and args.source_format in {"md", "html", "docx"}
+            and args.target_format in {"md", "html", "docx"}
         )
-        engine = "stub"
+        use_soffice = (
+            soffice_available()
+            and args.source_format in {"docx", "hwp", "hwpx"}
+            and args.target_format in {"pdf", "html", "docx"}
+        )
+
+        if use_pandoc:
+            result = run_pandoc_conversion(
+                input_path=args.input,
+                output_path=args.output,
+                source_format=args.source_format,
+                target_format=args.target_format,
+                route=args.route,
+                template=args.template,
+                preserve_original=args.preserve_original,
+            )
+            engine = "pandoc"
+        elif use_soffice:
+            result = run_soffice_conversion(
+                input_path=args.input,
+                output_path=args.output,
+                source_format=args.source_format,
+                target_format=args.target_format,
+                route=args.route,
+                template=args.template,
+                preserve_original=args.preserve_original,
+            )
+            engine = "soffice"
+        else:
+            result = run_stub_conversion(
+                input_path=args.input,
+                output_path=args.output,
+                source_format=args.source_format,
+                target_format=args.target_format,
+                route=args.route,
+                template=args.template,
+                preserve_original=args.preserve_original,
+            )
+            engine = "stub"
 
     if args.emit_metadata:
         args.emit_metadata.parent.mkdir(parents=True, exist_ok=True)

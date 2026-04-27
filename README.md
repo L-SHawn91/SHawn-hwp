@@ -28,6 +28,7 @@ Build a reproducible, quality-oriented, bidirectional conversion system centered
 - `DOCX -> HWPX`
 - `Markdown -> HWPX`
 - `DOCX/Markdown -> HWP` where feasible
+- structured research proposal authoring source -> official HWPX template candidate
 
 while preserving originals, tracking loss, and producing QA reports that explain whether the output is safe for editing, versioning, or submission.
 
@@ -52,6 +53,41 @@ SHawn-hwp/
 └─ skill/
 ```
 
+## Research proposal workflow
+
+SHawn-hwp now treats research proposals as a template-safe authoring workflow:
+
+```text
+structured JSON / Markdown draft
+  -> proposal completeness validation
+  -> official HWPX template injection candidate
+  -> DOCX/PDF/HWPX derivatives
+  -> submission QA report
+```
+
+Initial CLIs:
+
+```bash
+python3 scripts/proposal_validate.py \
+  --input docs/fixtures/research-proposal.json \
+  --report /tmp/proposal-validation.md \
+  --json /tmp/proposal-validation.json
+
+python3 scripts/template_profile.py \
+  --template official-template.hwpx \
+  --output official-template.profile.json
+
+python3 scripts/proposal_inject.py \
+  --template official-template-with-slots.hwpx \
+  --proposal docs/fixtures/research-proposal.json \
+  --output generated-proposal.hwpx
+```
+
+Key docs:
+
+- `docs/research-proposal-workflow.md`
+- `docs/research-proposal-template-profile.md`
+
 ## Status
 
-Planning / architecture bootstrap.
+Active build / architecture bootstrap.
