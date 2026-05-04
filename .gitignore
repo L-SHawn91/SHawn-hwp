@@ -3,4 +3,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 outputs/
+tmp/
+external/rhwp/
+external/rhwp-core/
 .DS_Store

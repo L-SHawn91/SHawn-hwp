@@ -81,12 +81,46 @@ python3 scripts/proposal_inject.py \
   --template official-template-with-slots.hwpx \
   --proposal docs/fixtures/research-proposal.json \
   --output generated-proposal.hwpx
+
+python3 scripts/template_qa.py \
+  --template official-template-with-slots.hwpx \
+  --candidate generated-proposal.hwpx \
+  --report template-qa.md \
+  --json template-qa.json
+
+python3 scripts/package_submission.py \
+  --source official-template-with-slots.hwpx \
+  --converted generated-proposal.hwpx \
+  --report template-qa.md \
+  --outdir submission-bundle \
+  --include-original
 ```
 
 Key docs:
 
 - `docs/research-proposal-workflow.md`
 - `docs/research-proposal-template-profile.md`
+- `docs/rhwp-integration-260501.md`
+
+## rhwp rendering/probe route
+
+SHawn-hwp can use [`edwardkim/rhwp`](https://github.com/edwardkim/rhwp) via the optional `@rhwp/core` package as a layout/rendering probe engine.
+
+```bash
+npm install --prefix external/rhwp-core @rhwp/core
+
+node scripts/rhwp_probe.mjs info \
+  --input data/fixtures/real-hwp/source.hwp
+
+python3 scripts/convert.py \
+  --input data/fixtures/real-hwp/source.hwp \
+  --from hwp \
+  --to svg \
+  --output outputs/rhwp-svg \
+  --emit-metadata outputs/rhwp-svg.meta.json
+```
+
+Use this route for page-count/renderability checks and SVG visual QA. Keep `hwp-salvage` as the text/Markdown/DOCX recovery route.
 
 ## Status
 

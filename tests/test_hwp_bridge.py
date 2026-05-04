@@ -14,11 +14,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REAL_HWP = REPO_ROOT / 'data' / 'fixtures' / 'real-hwp' / 'source.hwp'
 
 
+@pytest.mark.skipif(not hwp_bridge_available(), reason='hwp2hwpx bridge missing')
 def test_hwp_bridge_environment_available():
     assert hwp_bridge_available() is True
 
 
-@pytest.mark.skipif(not REAL_HWP.exists(), reason='real HWP fixture missing')
+@pytest.mark.skipif(not REAL_HWP.exists() or not hwp_bridge_available(), reason='real HWP fixture or hwp2hwpx bridge missing')
 def test_convert_cli_hwp_to_hwpx_real_fixture(tmp_path: Path):
     output = tmp_path / 'out.hwpx'
     metadata = tmp_path / 'meta.json'

@@ -82,6 +82,29 @@ class TemplateProfile:
         return asdict(self)
 
 
+@dataclass
+class TemplateQAIssue:
+    level: str
+    code: str
+    message: str
+    expected: int | str | None = None
+    actual: int | str | None = None
+
+
+@dataclass
+class TemplateQAResult:
+    template_path: str
+    candidate_path: str
+    passed: bool
+    issues: list[TemplateQAIssue] = field(default_factory=list)
+    deltas: dict[str, int] = field(default_factory=dict)
+    template_profile: TemplateProfile | None = None
+    candidate_profile: TemplateProfile | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -243,3 +266,112 @@ def inject_payload_into_hwpx_template(template_path: Path, payload: dict[str, An
 def write_profile_json(profile: TemplateProfile, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+
+def compare_template_profiles(
+    template_path: Path,
+    candidate_path: Path,
+    *,
+    warn_table_delta: int = 0,
+    warn_image_delta: int = 0,
+    warn_section_delta: int = 0,
+    fail_if_slot_remains: bool = True,
+) -> TemplateQAResult:
+    """Compare a generated HWPX candidate against its source template profile."""
+
+    template_profile = extract_template_profile(template_path, template_id=template_path.stem)
+    candidate_profile = extract_template_profile(candidate_path, template_id=candidate_path.stem)
+    template_layout = template_profile.layout_baseline
+    candidate_layout = candidate_profile.layout_baseline
+    deltas = {
+        "section_count": candidate_layout.section_count - template_layout.section_count,
+        "xml_member_count": candidate_layout.xml_member_count - template_layout.xml_member_count,
+        "table_count": candidate_layout.table_count - template_layout.table_count,
+        "image_count": candidate_layout.image_count - template_layout.image_count,
+        "paragraph_count": candidate_layout.paragraph_count - template_layout.paragraph_count,
+        "slot_count": candidate_layout.slot_count - template_layout.slot_count,
+    }
+
+    issues: list[TemplateQAIssue] = []
+    if abs(deltas["section_count"]) > warn_section_delta:
+        issues.append(
+            TemplateQAIssue(
+                level="warning",
+                code="section_count_changed",
+                message="Candidate section count changed relative to template",
+                expected=template_layout.section_count,
+                actual=candidate_layout.section_count,
+            )
+        )
+    if abs(deltas["table_count"]) > warn_table_delta:
+        issues.append(
+            TemplateQAIssue(
+                level="warning",
+                code="table_count_changed",
+                message="Candidate table count changed relative to template",
+                expected=template_layout.table_count,
+                actual=candidate_layout.table_count,
+            )
+        )
+    if abs(deltas["image_count"]) > warn_image_delta:
+        issues.append(
+            TemplateQAIssue(
+                level="warning",
+                code="image_count_changed",
+                message="Candidate image count changed relative to template",
+                expected=template_layout.image_count,
+                actual=candidate_layout.image_count,
+            )
+        )
+    if fail_if_slot_remains and candidate_layout.slot_count:
+        issues.append(
+            TemplateQAIssue(
+                level="error",
+                code="slot_placeholder_remaining",
+                message="Candidate still contains explicit template slots",
+                expected=0,
+                actual=candidate_layout.slot_count,
+            )
+        )
+
+    passed = not any(issue.level == "error" for issue in issues)
+    return TemplateQAResult(
+        template_path=str(template_path),
+        candidate_path=str(candidate_path),
+        passed=passed,
+        issues=issues,
+        deltas=deltas,
+        template_profile=template_profile,
+        candidate_profile=candidate_profile,
+    )
+
+
+def render_template_qa_markdown(result: TemplateQAResult) -> str:
+    status = "PASS" if result.passed else "FAIL"
+    lines = [
+        "# SHawn-hwp Template QA Report",
+        "",
+        f"- template: `{result.template_path}`",
+        f"- candidate: `{result.candidate_path}`",
+        f"- status: **{status}**",
+        "",
+        "## Layout deltas",
+    ]
+    for key, value in result.deltas.items():
+        lines.append(f"- {key}: {value:+d}")
+
+    lines.extend(["", "## Issues"])
+    if not result.issues:
+        lines.append("- none")
+    else:
+        for issue in result.issues:
+            lines.append(
+                f"- **{issue.level}** `{issue.code}`: {issue.message} "
+                f"(expected={issue.expected}, actual={issue.actual})"
+            )
+    return "\n".join(lines).strip() + "\n"
+
+
+def write_template_qa_json(result: TemplateQAResult, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+

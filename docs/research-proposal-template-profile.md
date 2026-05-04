@@ -72,6 +72,7 @@ qa_rules:
 - Map known proposal slots such as `project_title`, `need`, `objectives`, `methods`, and `references` to structured proposal JSON sources.
 - Detect likely protected instruction/example regions using conservative Korean submission-form patterns.
 - Generate a derivative HWPX by replacing explicit slots only.
+- Compare a generated candidate against the original template profile and report structural deltas.
 
 ## Non-goals for v1
 

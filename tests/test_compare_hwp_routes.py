@@ -7,11 +7,13 @@ from pathlib import Path
 
 import pytest
 
+from shawn_hwp.converters.hwp_engine import hwp_bridge_available
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REAL_HWP = REPO_ROOT / 'data' / 'fixtures' / 'real-hwp' / 'source.hwp'
 
 
-@pytest.mark.skipif(not REAL_HWP.exists(), reason='real HWP fixture missing')
+@pytest.mark.skipif(not REAL_HWP.exists() or not hwp_bridge_available(), reason='real HWP fixture or hwp2hwpx bridge missing')
 def test_compare_hwp_routes_generates_summary(tmp_path: Path):
     outdir = tmp_path / 'compare'
     cmd = [

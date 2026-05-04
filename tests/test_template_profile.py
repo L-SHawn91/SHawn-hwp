@@ -6,7 +6,12 @@ import sys
 import zipfile
 from pathlib import Path
 
-from shawn_hwp.template_profile import extract_template_profile, inject_payload_into_hwpx_template
+from shawn_hwp.template_profile import (
+    compare_template_profiles,
+    extract_template_profile,
+    inject_payload_into_hwpx_template,
+    render_template_qa_markdown,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -125,3 +130,61 @@ def test_proposal_inject_cli_writes_derivative(tmp_path: Path):
     assert output.exists()
     with zipfile.ZipFile(output) as zf:
         assert "Need body" in zf.read("Contents/section0.xml").decode("utf-8")
+
+
+def test_compare_template_profiles_passes_after_slot_injection(tmp_path: Path):
+    template = tmp_path / "template.hwpx"
+    output = tmp_path / "generated.hwpx"
+    _make_slot_template(template)
+    inject_payload_into_hwpx_template(template, PROPOSAL, output)
+
+    result = compare_template_profiles(template, output)
+
+    assert result.passed is True
+    assert result.deltas["table_count"] == 0
+    assert result.deltas["image_count"] == 0
+    assert result.candidate_profile.layout_baseline.slot_count == 0
+    report = render_template_qa_markdown(result)
+    assert "Template QA Report" in report
+    assert "PASS" in report
+
+
+def test_compare_template_profiles_fails_when_slots_remain(tmp_path: Path):
+    template = tmp_path / "template.hwpx"
+    _make_slot_template(template)
+
+    result = compare_template_profiles(template, template)
+
+    assert result.passed is False
+    assert any(issue.code == "slot_placeholder_remaining" for issue in result.issues)
+
+
+def test_template_qa_cli_writes_report_and_json(tmp_path: Path):
+    template = tmp_path / "template.hwpx"
+    proposal = tmp_path / "proposal.json"
+    output = tmp_path / "generated.hwpx"
+    report = tmp_path / "qa.md"
+    json_path = tmp_path / "qa.json"
+    _make_slot_template(template)
+    proposal.write_text(json.dumps(PROPOSAL, ensure_ascii=False), encoding="utf-8")
+    inject_payload_into_hwpx_template(template, PROPOSAL, output)
+
+    cmd = [
+        sys.executable,
+        str(REPO_ROOT / "scripts" / "template_qa.py"),
+        "--template",
+        str(template),
+        "--candidate",
+        str(output),
+        "--report",
+        str(report),
+        "--json",
+        str(json_path),
+    ]
+    completed = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+
+    assert "Template QA Report" in completed.stdout
+    assert report.exists()
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["deltas"]["table_count"] == 0

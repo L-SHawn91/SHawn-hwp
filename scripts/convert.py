@@ -30,11 +30,12 @@ from shawn_hwp.converters.hwpx_engine import (
     run_md_to_hwpx_conversion,
 )
 from shawn_hwp.converters.pandoc_engine import pandoc_available, run_pandoc_conversion
+from shawn_hwp.converters.rhwp_engine import rhwp_core_available, run_hwp_to_svg_conversion
 from shawn_hwp.converters.soffice_engine import soffice_available, run_soffice_conversion
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
-VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "txt", "pdf", "html"]
+VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "txt", "pdf", "html", "svg"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -97,6 +98,17 @@ def main() -> int:
             preserve_original=args.preserve_original,
         )
         engine = "hwp-bridge"
+    elif args.source_format == "hwp" and args.target_format == "svg" and rhwp_core_available():
+        result = run_hwp_to_svg_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "rhwp-core"
     elif args.source_format == "hwpx" and args.target_format == "md" and hwpx_available():
         result = run_hwpx_to_md_conversion(
             input_path=args.input,

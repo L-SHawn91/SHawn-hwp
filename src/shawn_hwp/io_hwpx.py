@@ -15,7 +15,7 @@ def default_reference_hwpx() -> Path:
     candidate = Path("/tmp/pypandoc-hwpx/pypandoc_hwpx/blank.hwpx")
     if candidate.exists():
         return candidate
-    repo_fallback = Path(__file__).resolve().parents[3] / "data" / "reference" / "blank.hwpx"
+    repo_fallback = Path(__file__).resolve().parents[2] / "data" / "reference" / "blank.hwpx"
     return repo_fallback
 
 
