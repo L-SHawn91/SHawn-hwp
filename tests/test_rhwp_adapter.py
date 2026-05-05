@@ -141,6 +141,115 @@ def test_rhwp_layout_to_model_keeps_textline_breaks_inside_cells():
     assert model.blocks[0].rows == [["첫줄\n둘째줄"]]
 
 
+def test_rhwp_layout_to_model_infers_cell_spans_from_bbox_geometry_when_span_fields_absent():
+    payload = {
+        "page_count": 1,
+        "input": "geometry-merged-table.hwp",
+        "pages": [
+            {
+                "page_index": 0,
+                "text_layout": {"runs": []},
+                "render_tree": {
+                    "type": "Page",
+                    "children": [
+                        {
+                            "type": "Table",
+                            "bbox": {"x": 0, "y": 0, "w": 200, "h": 60},
+                            "children": [
+                                {
+                                    "type": "Cell",
+                                    "row": 0,
+                                    "col": 0,
+                                    "bbox": {"x": 0, "y": 0, "w": 200, "h": 20},
+                                    "children": [{"type": "TextRun", "text": "통합헤더"}],
+                                },
+                                {
+                                    "type": "Cell",
+                                    "row": 1,
+                                    "col": 0,
+                                    "bbox": {"x": 0, "y": 20, "w": 100, "h": 40},
+                                    "children": [{"type": "TextRun", "text": "A"}],
+                                },
+                                {
+                                    "type": "Cell",
+                                    "row": 1,
+                                    "col": 1,
+                                    "bbox": {"x": 100, "y": 20, "w": 100, "h": 20},
+                                    "children": [{"type": "TextRun", "text": "B"}],
+                                },
+                                {
+                                    "type": "Cell",
+                                    "row": 2,
+                                    "col": 1,
+                                    "bbox": {"x": 100, "y": 40, "w": 100, "h": 20},
+                                    "children": [{"type": "TextRun", "text": "C"}],
+                                },
+                            ],
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+
+    model = rhwp_layout_to_model(payload)
+
+    assert model.blocks[0].rows == [["통합헤더", ""], ["A", "B"], ["", "C"]]
+    assert model.blocks[0].cell_spans == [
+        {"row": 0, "col": 0, "rowspan": 1, "colspan": 2},
+        {"row": 1, "col": 0, "rowspan": 2, "colspan": 1},
+    ]
+
+
+def test_rhwp_layout_to_model_does_not_extend_last_cell_into_vertically_merged_neighbor():
+    payload = {
+        "page_count": 1,
+        "input": "right-edge-rowspan.hwp",
+        "pages": [
+            {
+                "page_index": 0,
+                "text_layout": {"runs": []},
+                "render_tree": {
+                    "type": "Page",
+                    "children": [
+                        {
+                            "type": "Table",
+                            "bbox": {"x": 0, "y": 0, "w": 200, "h": 40},
+                            "children": [
+                                {
+                                    "type": "Cell",
+                                    "row": 0,
+                                    "col": 0,
+                                    "bbox": {"x": 0, "y": 0, "w": 100, "h": 20},
+                                    "children": [{"type": "TextRun", "text": "A"}],
+                                },
+                                {
+                                    "type": "Cell",
+                                    "row": 0,
+                                    "col": 1,
+                                    "bbox": {"x": 100, "y": 0, "w": 100, "h": 40},
+                                    "children": [{"type": "TextRun", "text": "세로"}],
+                                },
+                                {
+                                    "type": "Cell",
+                                    "row": 1,
+                                    "col": 0,
+                                    "bbox": {"x": 0, "y": 20, "w": 100, "h": 20},
+                                    "children": [{"type": "TextRun", "text": "B"}],
+                                },
+                            ],
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+
+    model = rhwp_layout_to_model(payload)
+
+    assert model.blocks[0].cell_spans == [{"row": 0, "col": 1, "rowspan": 2, "colspan": 1}]
+
+
 @pytest.mark.skipif(not REAL_HWP.exists() or not rhwp_core_available(), reason="real HWP fixture or rhwp core missing")
 def test_parse_hwp_with_rhwp_real_first_page():
     model = parse_hwp_with_rhwp(REAL_HWP, pages="0")

@@ -112,6 +112,68 @@ def _int_attr(node: dict[str, Any], *names: str, default: int = 0) -> int:
     return default
 
 
+def _explicit_span(node: dict[str, Any], *names: str) -> int | None:
+    for name in names:
+        if name not in node:
+            continue
+        try:
+            return max(int(node[name]), 1)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _bbox_rect(node: dict[str, Any]) -> tuple[float, float, float, float] | None:
+    bbox = node.get("bbox")
+    if not isinstance(bbox, dict):
+        return None
+    try:
+        x = float(bbox.get("x"))
+        y = float(bbox.get("y"))
+        width = float(bbox.get("w", bbox.get("width")))
+        height = float(bbox.get("h", bbox.get("height")))
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return x, y, width, height
+
+
+def _cluster_positions(values: list[float], tolerance: float = 1.0) -> list[float]:
+    """Merge near-identical rhwp coordinates caused by rounding noise."""
+
+    clusters: list[list[float]] = []
+    for value in sorted(values):
+        if clusters and abs(value - (sum(clusters[-1]) / len(clusters[-1]))) <= tolerance:
+            clusters[-1].append(value)
+        else:
+            clusters.append([value])
+    return [sum(cluster) / len(cluster) for cluster in clusters]
+
+
+def _nearest_boundary_index(boundaries: list[float], value: float, tolerance: float = 1.5) -> int | None:
+    if not boundaries:
+        return None
+    index = min(range(len(boundaries)), key=lambda item: abs(boundaries[item] - value))
+    if abs(boundaries[index] - value) <= tolerance:
+        return index
+    return None
+
+
+def _span_from_bbox(cell: dict[str, Any], boundaries: list[float], axis: str) -> int:
+    rect = _bbox_rect(cell)
+    if rect is None or len(boundaries) < 2:
+        return 1
+    x, y, width, height = rect
+    start = x if axis == "x" else y
+    end = start + (width if axis == "x" else height)
+    start_index = _nearest_boundary_index(boundaries, start)
+    end_index = _nearest_boundary_index(boundaries, end)
+    if start_index is None or end_index is None or end_index <= start_index:
+        return 1
+    return max(end_index - start_index, 1)
+
+
 def _tables_from_render_tree(render_tree: dict[str, Any], page_index: int) -> list[dict[str, Any]]:
     """Extract best-effort tables from rhwp's render tree.
 
@@ -125,15 +187,55 @@ def _tables_from_render_tree(render_tree: dict[str, Any], page_index: int) -> li
         cell_nodes = _walk_render_nodes(table, "Cell")
         if not cell_nodes:
             continue
-        max_row = max(_int_attr(cell, "row") + max(_int_attr(cell, "rowSpan", "rowspan", "row_span", default=1), 1) - 1 for cell in cell_nodes)
-        max_col = max(_int_attr(cell, "col") + max(_int_attr(cell, "colSpan", "colspan", "col_span", default=1), 1) - 1 for cell in cell_nodes)
-        rows = [["" for _ in range(max_col + 1)] for _ in range(max_row + 1)]
-        cell_spans: list[dict[str, int]] = []
+        x_boundaries: list[float] = []
+        y_boundaries: list[float] = []
         for cell in cell_nodes:
+            rect = _bbox_rect(cell)
+            if rect is None:
+                continue
+            x, y, width, height = rect
+            x_boundaries.extend([x, x + width])
+            y_boundaries.extend([y, y + height])
+        x_boundaries = _cluster_positions(x_boundaries)
+        y_boundaries = _cluster_positions(y_boundaries)
+
+        cell_infos: list[dict[str, Any]] = []
+        for cell in cell_nodes:
+            explicit_rowspan = _explicit_span(cell, "rowSpan", "rowspan", "row_span")
+            explicit_colspan = _explicit_span(cell, "colSpan", "colspan", "col_span")
             row = _int_attr(cell, "row")
             col = _int_attr(cell, "col")
-            rowspan = max(_int_attr(cell, "rowSpan", "rowspan", "row_span", default=1), 1)
-            colspan = max(_int_attr(cell, "colSpan", "colspan", "col_span", default=1), 1)
+            cell_infos.append(
+                {
+                    "cell": cell,
+                    "row": row,
+                    "col": col,
+                    "rowspan": explicit_rowspan or _span_from_bbox(cell, y_boundaries, "y"),
+                    "colspan": explicit_colspan or _span_from_bbox(cell, x_boundaries, "x"),
+                }
+            )
+
+        by_row: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for info in cell_infos:
+            by_row[int(info["row"])].append(info)
+        for row_infos in by_row.values():
+            row_infos.sort(key=lambda info: int(info["col"]))
+            for index, info in enumerate(row_infos):
+                if index + 1 >= len(row_infos):
+                    continue
+                next_col = int(row_infos[index + 1]["col"])
+                col_gap_span = max(next_col - int(info["col"]), 1)
+                info["colspan"] = max(int(info["colspan"]), col_gap_span)
+        grid_width = max(info["col"] + max(int(info["colspan"]), 1) for info in cell_infos)
+        grid_height = max(info["row"] + max(int(info["rowspan"]), 1) for info in cell_infos)
+        rows = [["" for _ in range(grid_width)] for _ in range(grid_height)]
+        cell_spans: list[dict[str, int]] = []
+        for info in cell_infos:
+            cell = info["cell"]
+            row = int(info["row"])
+            col = int(info["col"])
+            rowspan = max(int(info["rowspan"]), 1)
+            colspan = max(int(info["colspan"]), 1)
             rows[row][col] = _clean_text(_text_from_render_node(cell))
             if rowspan > 1 or colspan > 1:
                 cell_spans.append({"row": row, "col": col, "rowspan": rowspan, "colspan": colspan})
