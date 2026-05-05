@@ -44,13 +44,19 @@ def _run_probe(args: list[str]) -> dict[str, Any]:
             "`npm install --prefix external/rhwp-core @rhwp/core`"
         )
 
-    proc = subprocess.run(
-        ["node", str(_probe_script()), *args],
-        cwd=_repo_root(),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["node", str(_probe_script()), *args],
+            cwd=_repo_root(),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        stdout = (exc.stdout or "").strip()
+        detail = stderr or stdout or str(exc)
+        raise RuntimeError(f"rhwp_probe.mjs failed with exit code {exc.returncode}: {detail}") from exc
     return json.loads(proc.stdout)
 
 

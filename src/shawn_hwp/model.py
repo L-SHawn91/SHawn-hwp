@@ -24,6 +24,7 @@ class Block:
     text: str = ""
     level: int = 0
     rows: list[list[str]] = field(default_factory=list)
+    cell_spans: list[dict[str, int]] = field(default_factory=list)
     runs: list[InlineRun] = field(default_factory=list)
     source_trace: str | None = None
 
@@ -45,5 +46,10 @@ class DocumentModel:
     def add_paragraph(self, text: str, source_trace: str | None = None, runs: list[InlineRun] | None = None) -> None:
         self.blocks.append(Block(kind="paragraph", text=text, runs=runs or [], source_trace=source_trace))
 
-    def add_table(self, rows: list[list[str]], source_trace: str | None = None) -> None:
-        self.blocks.append(Block(kind="table", rows=rows, source_trace=source_trace))
+    def add_table(
+        self,
+        rows: list[list[str]],
+        source_trace: str | None = None,
+        cell_spans: list[dict[str, int]] | None = None,
+    ) -> None:
+        self.blocks.append(Block(kind="table", rows=rows, cell_spans=cell_spans or [], source_trace=source_trace))

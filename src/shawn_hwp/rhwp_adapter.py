@@ -76,15 +76,40 @@ def _walk_render_nodes(node: Any, node_type: str) -> list[dict[str, Any]]:
 
 
 def _text_from_render_node(node: Any) -> str:
-    """Collect visible TextRun strings below a render-tree node."""
+    """Collect visible TextRun strings below a render-tree node.
+
+    rhwp represents multi-line table cell content as multiple TextLine nodes.
+    Preserve those line boundaries so proposal-form cells do not collapse
+    separate lines into a single glued string.
+    """
 
     if isinstance(node, dict):
-        text = str(node.get("text", "")) if node.get("type") == "TextRun" else ""
-        child_text = "".join(_text_from_render_node(child) for child in node.get("children", []))
-        return text + child_text
+        if node.get("type") == "TextRun":
+            return str(node.get("text", ""))
+        if node.get("type") == "TextLine":
+            return "".join(_text_from_render_node(child) for child in node.get("children", []))
+        line_texts = [
+            _text_from_render_node(child)
+            for child in node.get("children", [])
+            if isinstance(child, dict) and child.get("type") == "TextLine"
+        ]
+        if line_texts:
+            return "\n".join(text for text in line_texts if text)
+        return "".join(_text_from_render_node(child) for child in node.get("children", []))
     if isinstance(node, list):
         return "".join(_text_from_render_node(item) for item in node)
     return ""
+
+
+def _int_attr(node: dict[str, Any], *names: str, default: int = 0) -> int:
+    for name in names:
+        if name not in node:
+            continue
+        try:
+            return int(node[name])
+        except (TypeError, ValueError):
+            return default
+    return default
 
 
 def _tables_from_render_tree(render_tree: dict[str, Any], page_index: int) -> list[dict[str, Any]]:
@@ -100,19 +125,24 @@ def _tables_from_render_tree(render_tree: dict[str, Any], page_index: int) -> li
         cell_nodes = _walk_render_nodes(table, "Cell")
         if not cell_nodes:
             continue
-        max_row = max(int(cell.get("row", 0)) for cell in cell_nodes)
-        max_col = max(int(cell.get("col", 0)) for cell in cell_nodes)
+        max_row = max(_int_attr(cell, "row") + max(_int_attr(cell, "rowSpan", "rowspan", "row_span", default=1), 1) - 1 for cell in cell_nodes)
+        max_col = max(_int_attr(cell, "col") + max(_int_attr(cell, "colSpan", "colspan", "col_span", default=1), 1) - 1 for cell in cell_nodes)
         rows = [["" for _ in range(max_col + 1)] for _ in range(max_row + 1)]
+        cell_spans: list[dict[str, int]] = []
         for cell in cell_nodes:
-            row = int(cell.get("row", 0))
-            col = int(cell.get("col", 0))
+            row = _int_attr(cell, "row")
+            col = _int_attr(cell, "col")
+            rowspan = max(_int_attr(cell, "rowSpan", "rowspan", "row_span", default=1), 1)
+            colspan = max(_int_attr(cell, "colSpan", "colspan", "col_span", default=1), 1)
             rows[row][col] = _clean_text(_text_from_render_node(cell))
+            if rowspan > 1 or colspan > 1:
+                cell_spans.append({"row": row, "col": col, "rowspan": rowspan, "colspan": colspan})
         if any(any(value for value in row) for row in rows):
             pi = table.get("pi", "?")
             ci = table.get("ci", "?")
             y = _bbox_y(table)
             trace = f"rhwp:page={page_index} table={table_idx} pi={pi} ci={ci} y={y}"
-            tables.append({"page": page_index, "y": y, "rows": rows, "trace": trace})
+            tables.append({"page": page_index, "y": y, "rows": rows, "cell_spans": cell_spans, "trace": trace})
     return tables
 
 
@@ -182,7 +212,7 @@ def rhwp_layout_to_model(layout_payload: dict[str, Any]) -> DocumentModel:
     kind_rank = {"heading": 0, "paragraph": 1, "table": 2}
     for item in sorted(items, key=lambda value: (int(value.get("page", 0)), float(value.get("y", 0)), kind_rank.get(str(value.get("kind")), 9))):
         if item["kind"] == "table":
-            model.add_table(item["rows"], source_trace=item["trace"])
+            model.add_table(item["rows"], source_trace=item["trace"], cell_spans=item.get("cell_spans"))
         elif item["kind"] == "heading":
             model.add_heading(item["text"], level=int(item["level"]), source_trace=item["trace"], runs=item["runs"])
         else:

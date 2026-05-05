@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from shawn_hwp.converters import rhwp_engine
 from shawn_hwp.converters.rhwp_engine import (
+    export_hwp_layout_with_rhwp,
     export_hwp_svg_with_rhwp,
     probe_hwp_with_rhwp,
     rhwp_core_available,
@@ -68,3 +70,14 @@ def test_convert_cli_hwp_to_svg_real_fixture(tmp_path: Path):
     assert payload["target_format"] == "svg"
     assert payload["route"] == "rhwp-svg-render"
     assert payload["output_size_bytes"] > 0
+
+
+def test_rhwp_probe_error_includes_stderr(monkeypatch: pytest.MonkeyPatch):
+    def fake_run(*args, **kwargs):
+        raise subprocess.CalledProcessError(1, args[0], stderr="Cannot find module @rhwp/core")
+
+    monkeypatch.setattr(rhwp_engine, "rhwp_core_available", lambda: True)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match="Cannot find module @rhwp/core"):
+        export_hwp_layout_with_rhwp(Path("dummy.hwp"))
