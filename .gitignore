@@ -7,3 +7,10 @@ tmp/
 external/rhwp/
 external/rhwp-core/
 .DS_Store
+
+# Auto-added standard ignore
+*.pyo
+.cursor/
+.vscode/
+.idea/
+*.pdf
