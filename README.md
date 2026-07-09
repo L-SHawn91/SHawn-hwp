@@ -42,6 +42,30 @@ while preserving originals, tracking loss, and producing QA reports that explain
 4. Explain loss instead of hiding it
 5. Hybrid architecture: use the best available parser/rendering route, then normalize into a reviewable internal model
 
+## Differentiation strategy
+
+SHawn-hwp is not intended to replace mature parsing/rendering projects such as [`rhwp`](https://github.com/edwardkim/rhwp), legacy HWP parsers, LibreOffice, or Pandoc. It treats them as possible conversion engines and focuses on the layer that is often missing in Korean document workflows: route comparison, conversion-loss reporting, template integrity checks, and submission-readiness QA.
+
+The core output is therefore not only a converted file. A useful run should also produce review evidence:
+
+```text
+source document
+  -> one or more conversion routes
+  -> weighted QA score
+  -> L0-L4 loss level
+  -> route confidence
+  -> submission readiness decision
+  -> manifest / bundle for review
+```
+
+This makes SHawn-hwp an early-stage **QA and workflow layer for Korean document conversion**, not a claim that every HWP/HWPX input can already be converted perfectly.
+
+See:
+
+- `docs/benchmark-matrix.md`
+- `docs/quality-rubric.md`
+- `docs/examples/sample-template-qa.md`
+
 ## Installation
 
 ```bash

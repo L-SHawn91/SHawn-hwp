@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
-from shawn_hwp.qa.scoring import WEIGHTS, total_weight
+from shawn_hwp.qa.scoring import WEIGHTS, route_evaluation as evaluate_route, total_weight
 
 
 READINESS_BANDS = (
@@ -34,6 +34,8 @@ class QaResult:
     max_score: int
     readiness: str
     risk_categories: list[str]
+    loss_level: dict[str, Any]
+    route_evaluation: dict[str, Any]
     metrics: dict[str, int]
     comparisons: dict[str, Any]
 
@@ -218,6 +220,15 @@ def top_risk_categories(metrics: dict[str, int], limit: int = 3) -> list[str]:
     return [category for category, deficit in deficits if deficit > 0][:limit]
 
 
+def _engine_for_route(source_format: str, candidate_format: str) -> str:
+    route_formats = {source_format, candidate_format}
+    if route_formats <= {"md", "docx", "html", "pdf"}:
+        return "file-pair-qa"
+    if "hwp" in route_formats or "hwpx" in route_formats:
+        return "rhwp/hwp-salvage/external"
+    return "internal"
+
+
 def generate_qa_result(
     source: Path,
     candidate: Path,
@@ -227,6 +238,15 @@ def generate_qa_result(
 ) -> QaResult:
     metrics, comparisons = _build_metrics(source, candidate, source_format, candidate_format)
     score = sum(metrics.values())
+    risks = top_risk_categories(metrics)
+    route = evaluate_route(
+        route=f"{source_format}-to-{candidate_format}",
+        engine=_engine_for_route(source_format, candidate_format),
+        weighted_score=score,
+        max_score=total_weight(),
+        risk_categories=risks,
+        engine_available=source.exists() and candidate.exists(),
+    )
     return QaResult(
         source=str(source),
         candidate=str(candidate),
@@ -240,7 +260,9 @@ def generate_qa_result(
         weighted_score=score,
         max_score=total_weight(),
         readiness=classify_readiness(score),
-        risk_categories=top_risk_categories(metrics),
+        risk_categories=risks,
+        loss_level=asdict(route.loss_level),
+        route_evaluation=asdict(route),
         metrics=metrics,
         comparisons=comparisons,
     )
@@ -256,6 +278,9 @@ def render_markdown_report(result: QaResult) -> str:
         f"- candidate format: `{result.candidate_format}`",
         f"- score: **{result.weighted_score}/{result.max_score}**",
         f"- readiness: **{result.readiness}**",
+        f"- loss level: **{result.loss_level['code']} — {result.loss_level['label']}**",
+        f"- route confidence: **{result.route_evaluation['confidence']}**",
+        f"- submission ready: **{result.route_evaluation['submission_ready']}**",
     ]
     if result.label:
         lines.append(f"- label: `{result.label}`")

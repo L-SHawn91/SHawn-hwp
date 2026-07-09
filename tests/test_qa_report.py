@@ -54,6 +54,8 @@ def test_generate_qa_result_and_render(tmp_path: Path):
 
     assert result.weighted_score >= 95
     assert result.readiness == "near submission-ready"
+    assert result.loss_level["code"] == "L0"
+    assert result.route_evaluation["submission_ready"] is True
     assert result.metrics["structure"] == 20
     assert result.metrics["table"] == 15
     assert result.metrics["footnote_numbering"] == 10
@@ -67,6 +69,7 @@ def test_generate_qa_result_and_render(tmp_path: Path):
     assert "# SHawn-hwp QA Report" in report
     assert "fixture-a" in report
     assert "text similarity" in report
+    assert "loss level" in report
 
 
 def test_generate_qa_result_detects_structure_and_table_loss(tmp_path: Path):
@@ -79,6 +82,8 @@ def test_generate_qa_result_detects_structure_and_table_loss(tmp_path: Path):
 
     assert result.metrics["structure"] == 0
     assert result.metrics["table"] == 0
+    assert result.loss_level["code"] in {"L2", "L3", "L4"}
+    assert result.route_evaluation["submission_ready"] is False
     assert "structure" in result.risk_categories
     assert "table" in result.risk_categories
 
@@ -118,5 +123,7 @@ def test_cli_writes_report_and_json(tmp_path: Path):
 
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["label"] == "smoke"
+    assert payload["loss_level"]["code"] == "L0"
+    assert payload["route_evaluation"]["route"] == "md-to-md"
     assert payload["comparisons"]["source_heading_count"] == 2
     assert payload["metrics"]["table"] == 15
