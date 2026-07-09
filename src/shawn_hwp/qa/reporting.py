@@ -259,7 +259,7 @@ def generate_qa_result(
         candidate_size_bytes=candidate.stat().st_size if candidate.exists() else None,
         weighted_score=score,
         max_score=total_weight(),
-        readiness=classify_readiness(score),
+        readiness="submission-blocked: repair required" if route.loss_level.submission_blocking else classify_readiness(score),
         risk_categories=risks,
         loss_level=asdict(route.loss_level),
         route_evaluation=asdict(route),

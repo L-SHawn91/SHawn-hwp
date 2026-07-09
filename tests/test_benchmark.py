@@ -45,6 +45,8 @@ def test_benchmark_cli_generates_reports(tmp_path: Path):
     assert manifest["fixture"] == "simple-report"
     assert manifest["candidate"] == "shawn-hwp-route"
     assert manifest["score"] == 100
+    assert manifest["loss_level"]["code"] == "L0"
+    assert manifest["route_evaluation"]["submission_ready"] is True
 
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["weighted_score"] == 100

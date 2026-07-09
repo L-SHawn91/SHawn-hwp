@@ -94,7 +94,10 @@ def main() -> int:
         "qa_report": str(report_path),
         "qa_json": str(json_path),
         "score": result.weighted_score,
+        "max_score": result.max_score,
         "readiness": result.readiness,
+        "loss_level": result.loss_level,
+        "route_evaluation": result.route_evaluation,
         "risk_categories": result.risk_categories,
     }
     json_path.write_text(json.dumps(result.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -105,6 +108,9 @@ def main() -> int:
     print(f"candidate={args.candidate}")
     print(f"score={result.weighted_score}/{result.max_score}")
     print(f"readiness={result.readiness}")
+    print(f"loss_level={result.loss_level['code']} ({result.loss_level['label']})")
+    print(f"route_confidence={result.route_evaluation['confidence']}")
+    print(f"submission_ready={result.route_evaluation['submission_ready']}")
     print(f"report={report_path}")
     print(f"json={json_path}")
     print(f"manifest={manifest_path}")

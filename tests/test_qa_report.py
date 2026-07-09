@@ -88,6 +88,20 @@ def test_generate_qa_result_detects_structure_and_table_loss(tmp_path: Path):
     assert "table" in result.risk_categories
 
 
+def test_submission_blocking_loss_overrides_numeric_readiness(tmp_path: Path):
+    source = tmp_path / "source.md"
+    candidate = tmp_path / "candidate.md"
+    source.write_text("# Form\n\n- [ ] Required approval\n\nPLACEHOLDER: fill this\n", encoding="utf-8")
+    candidate.write_text("# Form\n\nRequired approval\n", encoding="utf-8")
+
+    result = generate_qa_result(source, candidate, "md", "md")
+
+    assert result.weighted_score >= 80
+    assert result.loss_level["code"] == "L4"
+    assert result.route_evaluation["submission_ready"] is False
+    assert result.readiness == "submission-blocked: repair required"
+
+
 def test_cli_writes_report_and_json(tmp_path: Path):
     source = tmp_path / "source.md"
     candidate = tmp_path / "candidate.md"

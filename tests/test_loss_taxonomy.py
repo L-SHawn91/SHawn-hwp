@@ -40,6 +40,20 @@ def test_route_evaluation_combines_engine_signal_and_loss_level():
     assert "table" in result.reason
 
 
+def test_route_evaluation_keeps_l0_minor_deltas_submission_ready():
+    result = route_evaluation(
+        route="md-to-md",
+        engine="file-pair-qa",
+        weighted_score=98,
+        max_score=100,
+        risk_categories=["text", "footnote_numbering"],
+        engine_available=True,
+    )
+
+    assert result.loss_level.code == "L0"
+    assert result.submission_ready is True
+
+
 def test_recommend_best_route_prefers_ready_candidate_then_confidence():
     weak = route_evaluation(
         route="stub",

@@ -100,7 +100,8 @@ def route_evaluation(
     engine_penalty = 0.0 if engine_available else 0.45
     confidence = round(max(0.0, min(1.0, weighted_score / max_score - risk_penalty - engine_penalty)), 2) if max_score else 0.0
     risks = tuple(risk_categories)
-    submission_ready = engine_available and loss_level.code in {"L0", "L1"} and not (set(risks) & SUBMISSION_READY_BLOCKING_RISKS)
+    readiness_blockers = SUBMISSION_BLOCKING_RISKS if loss_level.code == "L0" else SUBMISSION_READY_BLOCKING_RISKS
+    submission_ready = engine_available and loss_level.code in {"L0", "L1"} and not (set(risks) & readiness_blockers)
     risk_text = ", ".join(risks) if risks else "no tracked risk"
     availability = "available" if engine_available else "unavailable"
     reason = f"engine={engine} ({availability}); loss={loss_level.code}; risks={risk_text}"

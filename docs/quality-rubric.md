@@ -16,8 +16,9 @@ SHawn-hwp scores conversion candidates as reviewable submission artifacts, not m
 
 ## Readiness bands
 
-| Score | Label | Meaning |
+| Score / condition | Label | Meaning |
 |---:|---|---|
+| submission-blocking loss | submission-blocked: repair required | score is overridden because template/submission-critical evidence is unsafe |
 | 90-100 | near submission-ready | candidate may be reviewed for final submission |
 | 80-89 | minor repair needed | usable draft with targeted repair |
 | 70-79 | working draft quality | useful for editing, not final submission |
@@ -42,5 +43,7 @@ Route confidence combines:
 1. weighted QA score,
 2. known risk categories,
 3. whether the claimed engine/route was actually available.
+
+`submission_ready=true` means the candidate passed the currently tracked taxonomy; it is not a guarantee that every visual, legal, or institution-specific submission requirement is safe.
 
 This keeps the project positioned as a QA/orchestration layer: the score explains why a route is safe, questionable, or blocked instead of claiming that any single converter is perfect.
