@@ -1,0 +1,38 @@
+---
+name: Bug report
+description: Report a reproducible SHawn-hwp bug using public or synthetic inputs
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not attach private documents, credentials, patient/sample data, unpublished manuscripts, or local/cloud paths.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal public reproduction
+      description: Use a synthetic or license-compatible fixture.
+      placeholder: |
+        1. Run ...
+        2. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Python version, OS, SHawn-hwp commit/tag

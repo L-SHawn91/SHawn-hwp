@@ -2,7 +2,7 @@
   "project_slug": "shawn-hwp",
   "display_name": "SHawn-hwp",
   "status": "active-repo",
-  "working_folder": "/home/mdge/github/SHawn-hwp",
+  "working_folder": "<local-github-root>/SHawn-hwp",
   "repo_name": "SHawn-hwp",
   "main_session": "proj-shawn-hwp",
   "source_of_truth": "filesystem-first",

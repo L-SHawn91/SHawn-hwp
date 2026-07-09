@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: "SHawn-hwp"
+message: "If SHawn-hwp helps your work, please cite the repository."
+type: software
+authors:
+  - family-names: "SHawn"
+repository-code: "https://github.com/L-SHawn91/SHawn-hwp"
+abstract: "An open-source, quality-first HWP/HWPX, DOCX, and Markdown conversion and QA pipeline for Korean academic, government, and submission workflows."
+license: "Apache-2.0"
+version: "0.1.0"
