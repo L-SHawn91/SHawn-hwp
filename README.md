@@ -2,9 +2,9 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-SHawn-hwp is an open-source, quality-first document conversion and QA pipeline for **HWP/HWPX, DOCX, and Markdown**.
+SHawn-hwp is an open-source, quality-first document conversion program for **HWP/HWPX, DOCX, and Markdown**.
 
-Unlike typical converters that only report whether a file was converted, SHawn-hwp is designed to preserve originals, track loss during conversion, evaluate round-trip stability, and judge whether the result is suitable for real Korean academic, government, and submission workflows.
+It is designed to actually run conversion routes, preserve originals, track loss during conversion, evaluate round-trip stability, and help users decide whether the generated result is suitable for real Korean academic, government, and submission workflows.
 
 ## Why this exists
 
@@ -18,7 +18,7 @@ Common problems include:
 - there is no clear explanation of what was lost
 - submission suitability is left entirely to manual inspection
 
-SHawn-hwp exists to solve that with reproducible conversion, structured loss reporting, and reviewable QA outputs.
+SHawn-hwp exists to solve that with reproducible conversion routes, structured loss reporting, and reviewable QA outputs.
 
 ## Core goal
 
@@ -44,9 +44,9 @@ while preserving originals, tracking loss, and producing QA reports that explain
 
 ## Differentiation strategy
 
-SHawn-hwp is not intended to replace mature parsing/rendering projects such as [`rhwp`](https://github.com/edwardkim/rhwp), legacy HWP parsers, LibreOffice, or Pandoc. It treats them as possible conversion engines and focuses on the layer that is often missing in Korean document workflows: route comparison, conversion-loss reporting, template integrity checks, and submission-readiness QA.
+SHawn-hwp does not try to reimplement every mature parsing/rendering project from scratch. Instead, it uses projects such as [`rhwp`](https://github.com/edwardkim/rhwp), legacy HWP parsers, LibreOffice, and Pandoc as concrete backend engines when available, then normalizes their output into SHawn-hwp's conversion model and writers.
 
-The core output is therefore not only a converted file. A useful run should also produce review evidence:
+The core output is a converted file. A useful run may also produce review evidence:
 
 ```text
 source document
@@ -58,7 +58,7 @@ source document
   -> manifest / bundle for review
 ```
 
-This makes SHawn-hwp an early-stage **QA and workflow layer for Korean document conversion**, not a claim that every HWP/HWPX input can already be converted perfectly.
+This makes SHawn-hwp an early-stage **Korean document conversion program with built-in QA/reporting**, not a claim that every HWP/HWPX input can already be converted perfectly.
 
 See:
 
@@ -145,9 +145,9 @@ Key docs:
 - `docs/rhwp-integration-260501.md`
 - `docs/hwp-perfect-conversion-roadmap.md`
 
-## rhwp rendering/probe route
+## rhwp conversion/rendering route
 
-SHawn-hwp can use [`edwardkim/rhwp`](https://github.com/edwardkim/rhwp) via the optional `@rhwp/core` package as a layout/rendering probe engine.
+SHawn-hwp can use [`edwardkim/rhwp`](https://github.com/edwardkim/rhwp) via the optional `@rhwp/core` package as a real HWP backend.  The same backend can render SVG pages and can now feed SHawn-hwp's internal model for HWP -> Markdown/DOCX conversion.
 
 ```bash
 npm install --prefix external/rhwp-core @rhwp/core
@@ -158,12 +158,28 @@ node scripts/rhwp_probe.mjs info \
 python3 scripts/convert.py \
   --input data/fixtures/real-hwp/source.hwp \
   --from hwp \
+  --to md \
+  --route rhwp-layout \
+  --output outputs/rhwp.md \
+  --emit-metadata outputs/rhwp-md.meta.json
+
+python3 scripts/convert.py \
+  --input data/fixtures/real-hwp/source.hwp \
+  --from hwp \
+  --to docx \
+  --route rhwp-layout \
+  --output outputs/rhwp.docx \
+  --emit-metadata outputs/rhwp-docx.meta.json
+
+python3 scripts/convert.py \
+  --input data/fixtures/real-hwp/source.hwp \
+  --from hwp \
   --to svg \
   --output outputs/rhwp-svg \
   --emit-metadata outputs/rhwp-svg.meta.json
 ```
 
-Use this route for page-count/renderability checks and SVG visual QA. Keep `hwp-salvage` as the text/Markdown/DOCX recovery route.
+Use this route when rhwp's layout model is the better HWP source of truth. Keep `hwp-salvage` as a fallback/alternate route for text-first recovery and route comparison.
 
 ## Public release boundary
 

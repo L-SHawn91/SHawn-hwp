@@ -30,7 +30,12 @@ from shawn_hwp.converters.hwpx_engine import (
     run_md_to_hwpx_conversion,
 )
 from shawn_hwp.converters.pandoc_engine import pandoc_available, run_pandoc_conversion
-from shawn_hwp.converters.rhwp_engine import rhwp_core_available, run_hwp_to_svg_conversion
+from shawn_hwp.converters.rhwp_engine import (
+    rhwp_core_available,
+    run_hwp_to_docx_layout_conversion,
+    run_hwp_to_md_layout_conversion,
+    run_hwp_to_svg_conversion,
+)
 from shawn_hwp.converters.soffice_engine import soffice_available, run_soffice_conversion
 from shawn_hwp.converters.stub import run_stub_conversion
 
@@ -53,8 +58,53 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    requested_route = (args.route or "").lower()
+    wants_rhwp_layout = requested_route in {"rhwp-layout", "rhwp-layout-to-md", "rhwp-layout-to-docx"}
+    wants_rhwp_md = requested_route in {"rhwp-layout", "rhwp-layout-to-md"}
+    wants_rhwp_docx = requested_route in {"rhwp-layout", "rhwp-layout-to-docx"}
+    if wants_rhwp_layout:
+        if args.source_format != "hwp" or args.target_format not in {"md", "docx"}:
+            print("error: rhwp-layout route currently supports hwp -> md/docx", file=sys.stderr)
+            return 2
+        if not rhwp_core_available():
+            print(
+                "error: rhwp-layout route requested but @rhwp/core is not available; "
+                "run `npm install --prefix external/rhwp-core @rhwp/core`",
+                file=sys.stderr,
+            )
+            return 2
 
-    if args.source_format == "hwp" and args.target_format == "txt" and hwp_salvage_available():
+    if (
+        wants_rhwp_md
+        and args.source_format == "hwp"
+        and args.target_format == "md"
+    ):
+        result = run_hwp_to_md_layout_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "rhwp-core"
+    elif (
+        wants_rhwp_docx
+        and args.source_format == "hwp"
+        and args.target_format == "docx"
+    ):
+        result = run_hwp_to_docx_layout_conversion(
+            input_path=args.input,
+            output_path=args.output,
+            source_format=args.source_format,
+            target_format=args.target_format,
+            route=args.route,
+            template=args.template,
+            preserve_original=args.preserve_original,
+        )
+        engine = "rhwp-core"
+    elif args.source_format == "hwp" and args.target_format == "txt" and hwp_salvage_available():
         result = run_hwp_to_txt_conversion(
             input_path=args.input,
             output_path=args.output,

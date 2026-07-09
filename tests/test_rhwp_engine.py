@@ -72,6 +72,70 @@ def test_convert_cli_hwp_to_svg_real_fixture(tmp_path: Path):
     assert payload["output_size_bytes"] > 0
 
 
+@pytest.mark.skipif(not REAL_HWP.exists() or not rhwp_core_available(), reason="real HWP fixture or rhwp core missing")
+def test_convert_cli_hwp_to_md_can_use_rhwp_layout_route(tmp_path: Path):
+    output = tmp_path / "out.md"
+    metadata = tmp_path / "meta.json"
+    cmd = [
+        sys.executable,
+        str(REPO_ROOT / "scripts" / "convert.py"),
+        "--input",
+        str(REAL_HWP),
+        "--from",
+        "hwp",
+        "--to",
+        "md",
+        "--route",
+        "rhwp-layout",
+        "--output",
+        str(output),
+        "--emit-metadata",
+        str(metadata),
+    ]
+
+    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+
+    assert "engine=rhwp-core" in result.stdout
+    assert output.exists()
+    body = output.read_text(encoding="utf-8")
+    assert "연구개발과제의 필요성" in body
+    payload = json.loads(metadata.read_text(encoding="utf-8"))
+    assert payload["target_format"] == "md"
+    assert payload["route"] == "rhwp-layout-to-md"
+    assert payload["output_size_bytes"] > 0
+
+
+@pytest.mark.skipif(not REAL_HWP.exists() or not rhwp_core_available(), reason="real HWP fixture or rhwp core missing")
+def test_convert_cli_hwp_to_docx_can_use_rhwp_layout_route(tmp_path: Path):
+    output = tmp_path / "out.docx"
+    metadata = tmp_path / "meta.json"
+    cmd = [
+        sys.executable,
+        str(REPO_ROOT / "scripts" / "convert.py"),
+        "--input",
+        str(REAL_HWP),
+        "--from",
+        "hwp",
+        "--to",
+        "docx",
+        "--route",
+        "rhwp-layout",
+        "--output",
+        str(output),
+        "--emit-metadata",
+        str(metadata),
+    ]
+
+    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+
+    assert "engine=rhwp-core" in result.stdout
+    assert output.exists()
+    payload = json.loads(metadata.read_text(encoding="utf-8"))
+    assert payload["target_format"] == "docx"
+    assert payload["route"] == "rhwp-layout-to-docx"
+    assert payload["output_size_bytes"] > 0
+
+
 def test_rhwp_probe_error_includes_stderr(monkeypatch: pytest.MonkeyPatch):
     def fake_run(*args, **kwargs):
         raise subprocess.CalledProcessError(1, args[0], stderr="Cannot find module @rhwp/core")

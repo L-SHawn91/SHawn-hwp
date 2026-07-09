@@ -1,8 +1,9 @@
-"""Optional rhwp/@rhwp-core integration for layout/SVG QA.
+"""Optional rhwp/@rhwp-core integration for real HWP conversion routes.
 
-rhwp is used here as a rendering/probe engine, not as a replacement for the
-existing text-first salvage route.  The npm package is installed under
-``external/rhwp-core`` by ``npm install --prefix external/rhwp-core @rhwp/core``.
+The npm package is installed under ``external/rhwp-core`` by
+``npm install --prefix external/rhwp-core @rhwp/core``.  SHawn-hwp uses rhwp as
+an optional backend for SVG rendering and layout-model based HWP -> MD/DOCX
+conversion routes.
 """
 
 from __future__ import annotations
@@ -102,4 +103,66 @@ def run_hwp_to_svg_conversion(
         template=str(template) if template else None,
         input_size_bytes=input_path.stat().st_size,
         output_size_bytes=output_size,
+    )
+
+
+def run_hwp_to_md_layout_conversion(
+    input_path: Path,
+    output_path: Path,
+    source_format: str,
+    target_format: str,
+    route: str | None = None,
+    template: Path | None = None,
+    preserve_original: bool = True,
+) -> ConversionResult:
+    if source_format != "hwp" or target_format != "md":
+        raise ValueError("run_hwp_to_md_layout_conversion only supports hwp -> md")
+
+    from shawn_hwp.io_markdown import render_markdown
+    from shawn_hwp.rhwp_adapter import parse_hwp_with_rhwp
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    model = parse_hwp_with_rhwp(input_path)
+    output_path.write_text(render_markdown(model), encoding="utf-8")
+    return ConversionResult(
+        input_path=str(input_path),
+        output_path=str(output_path),
+        source_format=source_format,
+        target_format=target_format,
+        route="rhwp-layout-to-md" if route in {None, "rhwp-layout"} else route,
+        preserve_original=preserve_original,
+        template=str(template) if template else None,
+        input_size_bytes=input_path.stat().st_size,
+        output_size_bytes=output_path.stat().st_size,
+    )
+
+
+def run_hwp_to_docx_layout_conversion(
+    input_path: Path,
+    output_path: Path,
+    source_format: str,
+    target_format: str,
+    route: str | None = None,
+    template: Path | None = None,
+    preserve_original: bool = True,
+) -> ConversionResult:
+    if source_format != "hwp" or target_format != "docx":
+        raise ValueError("run_hwp_to_docx_layout_conversion only supports hwp -> docx")
+
+    from shawn_hwp.io_docx import write_docx
+    from shawn_hwp.rhwp_adapter import parse_hwp_with_rhwp
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    model = parse_hwp_with_rhwp(input_path)
+    write_docx(model, output_path)
+    return ConversionResult(
+        input_path=str(input_path),
+        output_path=str(output_path),
+        source_format=source_format,
+        target_format=target_format,
+        route="rhwp-layout-to-docx" if route in {None, "rhwp-layout"} else route,
+        preserve_original=preserve_original,
+        template=str(template) if template else None,
+        input_size_bytes=input_path.stat().st_size,
+        output_size_bytes=output_path.stat().st_size,
     )
