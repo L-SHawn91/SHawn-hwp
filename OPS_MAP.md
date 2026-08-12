@@ -17,7 +17,7 @@ quality-first review/reporting for Korean document production and submission lan
 ## Canonical paths
 
 - Mac: `~/GitHub/SHawn-hwp`
-- Linux: `/home/mdge/github/SHawn-hwp`
+- Linux: `~/github/SHawn-hwp`
 
 ## Project-workspace relation
 
