@@ -18,3 +18,7 @@ external/rhwp-core/
 .vscode/
 .idea/
 *.pdf
+
+# SHawn ecosystem shared ignore (Opus P1-4)
+.bak-*
+*/*.bak-*
