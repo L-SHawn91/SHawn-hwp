@@ -8,6 +8,7 @@ review_terms='(unpublished|patient|sample manifest|workflow log|credential|secre
 
 scan_args=(
   --hidden -S
+  -g '!.git'
   -g '!.git/**'
   -g '!__pycache__/**'
   -g '!*.egg-info/**'

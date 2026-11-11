@@ -77,10 +77,30 @@ python3 -m pip install -e .
 For development:
 
 ```bash
-python3 -m pip install -e .[dev]
-python3 -m pytest -q -k 'not real_fixture'
+python3 -m pip install -e '.[dev]' -e './packages/shawn-docx-qa[dev]'
+python3 -m pytest -q tests -k 'not real_fixture'
+python3 -m pytest -q packages/shawn-docx-qa/tests
 bash scripts/public_safety_scan.sh
 ```
+
+## DOCX structure QA package
+
+The `shawn-docx-qa` distribution is maintained under
+[`packages/shawn-docx-qa`](packages/shawn-docx-qa), keeping its
+`shawn_docx_qa` Python namespace and Apache-2.0 license. Install it alone with
+`python3 -m pip install ./packages/shawn-docx-qa`, or use the combined development
+installation above.
+
+```python
+from shawn_docx_qa import qa_docx
+
+report = qa_docx('example.docx')
+print(report['has_document_xml'], report['warnings'])
+```
+
+These are ZIP/member-presence checks, not rendering, XML validation, or a
+submission-readiness verdict. See [scope, checks, and source
+provenance](docs/docx-qa-package.md) before interpreting the result.
 
 ## Repository structure
 
@@ -92,6 +112,7 @@ SHawn-hwp/
 ├─ scripts/     # CLI-style utilities and probes
 ├─ src/         # Python package source
 ├─ tests/       # pytest suite
+├─ packages/    # separately installable public utilities maintained here
 └─ skill/       # agent/operator support material
 ```
 
@@ -191,7 +212,8 @@ Before release or tag, run:
 
 ```bash
 bash scripts/public_safety_scan.sh
-python3 -m pytest -q -k 'not real_fixture'
+python3 -m pytest -q tests -k 'not real_fixture'
+python3 -m pytest -q packages/shawn-docx-qa/tests
 ```
 
 The public CI intentionally excludes real HWP/HWPX fixture validation tests because those require valid proprietary-format fixtures; run the full suite only when fixture inputs are available.

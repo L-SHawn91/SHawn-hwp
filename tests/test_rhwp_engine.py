@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REAL_HWP = REPO_ROOT / "data" / "fixtures" / "real-hwp" / "source.hwp"
 
 
+@pytest.mark.skipif(not rhwp_core_available(), reason="optional rhwp core package not installed")
 def test_rhwp_core_available_when_external_package_installed():
     assert rhwp_core_available() is True
 
