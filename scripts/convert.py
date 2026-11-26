@@ -37,34 +37,31 @@ from shawn_hwp.converters.rhwp_engine import (
     run_hwp_to_md_layout_conversion,
     run_hwp_to_svg_conversion,
 )
-from shawn_hwp.converters.soffice_engine import soffice_available, run_soffice_conversion
+from shawn_hwp.converters.soffice_engine import (
+    SofficeConversionError,
+    run_soffice_conversion,
+    soffice_available,
+)
 from shawn_hwp.converters.stub import run_stub_conversion
 
 
 VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "txt", "pdf", "html", "svg"]
 
 
-def _remove_soffice_stale_outputs(input_path: Path, output_path: Path, target_format: str) -> None:
-    candidates = [
-        output_path,
-        output_path.parent / f"{input_path.stem}.{target_format}",
-    ]
-    for path in candidates:
-        if path.exists():
-            path.unlink()
-
-
 def _report_soffice_conversion_failure(
     source_format: str,
     target_format: str,
-    exc: subprocess.CalledProcessError,
+    exc: subprocess.CalledProcessError | SofficeConversionError,
 ) -> int:
-    detail = (exc.stderr or exc.stdout or "").strip()
-    if detail:
-        lines = [line.strip() for line in detail.splitlines() if line.strip()]
-        tail = lines[-1] if lines else f"exit status {exc.returncode}"
+    if isinstance(exc, SofficeConversionError):
+        tail = str(exc)
     else:
-        tail = f"exit status {exc.returncode}"
+        detail = (exc.stderr or exc.stdout or "").strip()
+        if detail:
+            lines = [line.strip() for line in detail.splitlines() if line.strip()]
+            tail = lines[-1] if lines else f"exit status {exc.returncode}"
+        else:
+            tail = f"exit status {exc.returncode}"
     print(
         f"error: soffice conversion failed ({source_format} -> {target_format}): {tail}",
         file=sys.stderr,
@@ -273,12 +270,7 @@ def main() -> int:
                     template=args.template,
                     preserve_original=args.preserve_original,
                 )
-            except subprocess.CalledProcessError as exc:
-                _remove_soffice_stale_outputs(
-                    args.input,
-                    args.output,
-                    args.target_format,
-                )
+            except (subprocess.CalledProcessError, SofficeConversionError) as exc:
                 return _report_soffice_conversion_failure(
                     args.source_format,
                     args.target_format,

@@ -78,6 +78,7 @@ def test_convert_cli_soffice_hwpx_to_pdf_failure_is_actionable(tmp_path: Path):
     )
     hwpx_path = tmp_path / "synthetic-ko.hwpx"
     pdf_path = tmp_path / "synthetic-ko.pdf"
+    pdf_path.write_bytes(b"%PDF-UNCHANGED-PLACEHOLDER")
     metadata = tmp_path / "hwpx-pdf-meta.json"
 
     make_hwpx = subprocess.run(
@@ -125,7 +126,7 @@ def test_convert_cli_soffice_hwpx_to_pdf_failure_is_actionable(tmp_path: Path):
     assert "hwpx -> docx and docx -> pdf" in failed.stderr
     assert "Traceback" not in failed.stderr
     assert "SHawn-hwp convert" not in failed.stdout
-    assert not pdf_path.exists()
+    assert pdf_path.read_bytes() == b"%PDF-UNCHANGED-PLACEHOLDER"
     assert not metadata.exists()
 
 
