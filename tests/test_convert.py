@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from shawn_hwp.converters.pandoc_engine import pandoc_available
 from shawn_hwp.converters.soffice_engine import soffice_available
 from shawn_hwp.converters.stub import run_stub_conversion
@@ -65,3 +67,116 @@ def test_convert_cli_writes_output_and_metadata(tmp_path: Path):
     else:
         assert "engine=stub" in result.stdout
         assert "converted by SHawn-hwp stub" in output.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(not soffice_available(), reason="soffice not available")
+def test_convert_cli_soffice_hwpx_to_pdf_failure_is_actionable(tmp_path: Path):
+    md_source = tmp_path / "synthetic-ko.md"
+    md_source.write_text(
+        "# 제목\n\n표\n\n| 열 | 값 |\n|---|---|\n| A | 1 |\n",
+        encoding="utf-8",
+    )
+    hwpx_path = tmp_path / "synthetic-ko.hwpx"
+    pdf_path = tmp_path / "synthetic-ko.pdf"
+    metadata = tmp_path / "hwpx-pdf-meta.json"
+
+    make_hwpx = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "convert.py"),
+            "--input",
+            str(md_source),
+            "--from",
+            "md",
+            "--to",
+            "hwpx",
+            "--output",
+            str(hwpx_path),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "engine=hwpx-native" in make_hwpx.stdout
+
+    failed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "convert.py"),
+            "--input",
+            str(hwpx_path),
+            "--from",
+            "hwpx",
+            "--to",
+            "pdf",
+            "--output",
+            str(pdf_path),
+            "--emit-metadata",
+            str(metadata),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert failed.returncode == 1
+    assert "error: soffice conversion failed (hwpx -> pdf):" in failed.stderr
+    assert "hwpx -> docx and docx -> pdf" in failed.stderr
+    assert "Traceback" not in failed.stderr
+    assert "SHawn-hwp convert" not in failed.stdout
+    assert not pdf_path.exists()
+    assert not metadata.exists()
+
+
+@pytest.mark.skipif(not soffice_available(), reason="soffice not available")
+def test_convert_cli_soffice_docx_to_pdf_success(tmp_path: Path):
+    source = tmp_path / "source.md"
+    docx_path = tmp_path / "out.docx"
+    pdf_path = tmp_path / "out.pdf"
+    source.write_text("# Title\n\nbody\n", encoding="utf-8")
+
+    if not pandoc_available():
+        pytest.skip("pandoc not available for docx fixture")
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "convert.py"),
+            "--input",
+            str(source),
+            "--from",
+            "md",
+            "--to",
+            "docx",
+            "--output",
+            str(docx_path),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    ok = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "convert.py"),
+            "--input",
+            str(docx_path),
+            "--from",
+            "docx",
+            "--to",
+            "pdf",
+            "--output",
+            str(pdf_path),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert ok.returncode == 0
+    assert "engine=soffice" in ok.stdout
+    assert pdf_path.exists()
+    assert pdf_path.read_bytes()[:4] == b"%PDF"

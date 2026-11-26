@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -41,6 +42,40 @@ from shawn_hwp.converters.stub import run_stub_conversion
 
 
 VALID_FORMATS = ["hwp", "hwpx", "docx", "md", "txt", "pdf", "html", "svg"]
+
+
+def _remove_soffice_stale_outputs(input_path: Path, output_path: Path, target_format: str) -> None:
+    candidates = [
+        output_path,
+        output_path.parent / f"{input_path.stem}.{target_format}",
+    ]
+    for path in candidates:
+        if path.exists():
+            path.unlink()
+
+
+def _report_soffice_conversion_failure(
+    source_format: str,
+    target_format: str,
+    exc: subprocess.CalledProcessError,
+) -> int:
+    detail = (exc.stderr or exc.stdout or "").strip()
+    if detail:
+        lines = [line.strip() for line in detail.splitlines() if line.strip()]
+        tail = lines[-1] if lines else f"exit status {exc.returncode}"
+    else:
+        tail = f"exit status {exc.returncode}"
+    print(
+        f"error: soffice conversion failed ({source_format} -> {target_format}): {tail}",
+        file=sys.stderr,
+    )
+    if source_format == "hwpx" and target_format == "pdf":
+        print(
+            "error: for hwpx-native generated files, run hwpx -> docx and docx -> pdf "
+            "as separate convert steps when direct soffice export fails.",
+            file=sys.stderr,
+        )
+    return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -227,16 +262,28 @@ def main() -> int:
             )
             engine = "pandoc"
         elif use_soffice:
-            result = run_soffice_conversion(
-                input_path=args.input,
-                output_path=args.output,
-                source_format=args.source_format,
-                target_format=args.target_format,
-                route=args.route,
-                template=args.template,
-                preserve_original=args.preserve_original,
-            )
             engine = "soffice"
+            try:
+                result = run_soffice_conversion(
+                    input_path=args.input,
+                    output_path=args.output,
+                    source_format=args.source_format,
+                    target_format=args.target_format,
+                    route=args.route,
+                    template=args.template,
+                    preserve_original=args.preserve_original,
+                )
+            except subprocess.CalledProcessError as exc:
+                _remove_soffice_stale_outputs(
+                    args.input,
+                    args.output,
+                    args.target_format,
+                )
+                return _report_soffice_conversion_failure(
+                    args.source_format,
+                    args.target_format,
+                    exc,
+                )
         else:
             result = run_stub_conversion(
                 input_path=args.input,
