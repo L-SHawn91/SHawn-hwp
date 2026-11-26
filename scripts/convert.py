@@ -68,8 +68,8 @@ def _report_soffice_conversion_failure(
     )
     if source_format == "hwpx" and target_format == "pdf":
         print(
-            "error: for hwpx-native generated files, run hwpx -> docx and docx -> pdf "
-            "as separate convert steps when direct soffice export fails.",
+            "error: for hwpx-native generated files, run hwpx -> docx (requires python-docx) "
+            "and docx -> pdf as separate convert steps when direct soffice export fails.",
             file=sys.stderr,
         )
     return 1

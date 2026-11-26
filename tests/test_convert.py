@@ -123,7 +123,7 @@ def test_convert_cli_soffice_hwpx_to_pdf_failure_is_actionable(tmp_path: Path):
 
     assert failed.returncode == 1
     assert "error: soffice conversion failed (hwpx -> pdf):" in failed.stderr
-    assert "hwpx -> docx and docx -> pdf" in failed.stderr
+    assert "hwpx -> docx (requires python-docx)" in failed.stderr
     assert "Traceback" not in failed.stderr
     assert "SHawn-hwp convert" not in failed.stdout
     assert pdf_path.read_bytes() == b"%PDF-UNCHANGED-PLACEHOLDER"
