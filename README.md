@@ -68,9 +68,12 @@ See:
 
 ## Installation
 
+Python 3.11 or newer is required (`requires-python` in `pyproject.toml`).
+
 ```bash
 git clone https://github.com/L-SHawn91/SHawn-hwp.git
 cd SHawn-hwp
+python3 --version
 python3 -m pip install -e .
 ```
 
