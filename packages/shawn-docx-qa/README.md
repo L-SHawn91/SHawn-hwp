@@ -26,19 +26,10 @@ It must not contain private databases, private manuscripts, PDFs, private corpor
 
 ## Quick start
 
-Run install and tests from this package directory (`packages/shawn-docx-qa`):
-
 ```bash
 python -m pip install -e .[dev]
 python -m pytest -q
-```
-
-The owner **SHawn-hwp** repository runs the public-safety scan at its root (see
-[`docs/docx-qa-package.md`](../../docs/docx-qa-package.md) and CI). From that
-repository root—not from this package—run:
-
-```bash
-bash scripts/public_safety_scan.sh
+python scripts/public_safety_scan.py .
 ```
 
 ## Status

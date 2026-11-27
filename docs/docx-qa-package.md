@@ -21,6 +21,17 @@ To use only the QA package, install `./packages/shawn-docx-qa` instead. It has n
 runtime dependencies and retains its Python 3.10+ support. The conversion package
 requires Python 3.11+; combined maintenance uses Python 3.11 or later.
 
+Run that package’s `pip install` and `pytest` from `packages/shawn-docx-qa`. The
+imported [package README](../packages/shawn-docx-qa/README.md) may still show an
+upstream Quick start line such as `python scripts/public_safety_scan.py .`. That
+file is excluded in the [import manifest](../packages/shawn-docx-qa/IMPORT_MANIFEST.json);
+this tree does not ship a parallel Python scanner. Run the owner public-safety
+check from the **SHawn-hwp repository root** (same as CI above):
+
+```bash
+bash scripts/public_safety_scan.sh
+```
+
 ```python
 from shawn_docx_qa import qa_docx
 
