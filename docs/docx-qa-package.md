@@ -17,6 +17,11 @@ python3 -m pytest -q packages/shawn-docx-qa/tests
 bash scripts/public_safety_scan.sh
 ```
 
+The imported package README shows an upstream Python scanner that this
+repository excludes. The [import manifest](../packages/shawn-docx-qa/IMPORT_MANIFEST.json)
+records that exclusion. Use the Bash scanner shown above from the SHawn-hwp
+repository root.
+
 To use only the QA package, install `./packages/shawn-docx-qa` instead. It has no
 runtime dependencies and retains its Python 3.10+ support. The conversion package
 requires Python 3.11+; combined maintenance uses Python 3.11 or later.
