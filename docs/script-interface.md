@@ -10,7 +10,7 @@ Run a single conversion route.
 - `--from {hwp,hwpx,docx,md}`
 - `--to {hwpx,docx,md,pdf,html}`
 - `--output PATH`
-- `--route NAME` (optional explicit route override)
+- `--route NAME` (optional explicit route override; rhwp layout example: `--route rhwp-layout` for `hwp -> md/docx`, yielding metadata routes `rhwp-layout-to-md` or `rhwp-layout-to-docx`)
 - `--template PATH` (optional reference HWPX/template)
 - `--preserve-original` (default behavior; explicit flag for logging)
 - `--emit-metadata PATH`

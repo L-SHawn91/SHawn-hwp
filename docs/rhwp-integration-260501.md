@@ -11,12 +11,13 @@
 
 This does **not** replace the existing text-first `hwp5txt` salvage route.  The current split is intentional:
 
-| Need | Preferred route |
-| --- | --- |
-| Text/Markdown extraction | `hwp-salvage` via `hwp5txt` |
-| DOCX draft from recovered text | `hwp-salvage` + SHawn-hwp model |
-| Visual/layout check | `rhwp-core` SVG render |
-| Page count / renderability probe | `rhwp-core` info |
+| Need | Preferred route | Metadata `route` |
+| --- | --- | --- |
+| Text/Markdown extraction | default `hwp -> md` (`hwp-salvage`) | `hwp-to-md` |
+| DOCX draft from recovered text | default `hwp -> docx` (`hwp-salvage`) | `hwp-to-docx` |
+| Layout-aware HWP -> MD/DOCX | `hwp -> md/docx` with `--route rhwp-layout` | `rhwp-layout-to-md` / `rhwp-layout-to-docx` |
+| Visual/layout check | `hwp -> svg` (`rhwp-core`) | `rhwp-svg-render` |
+| Page count / renderability probe | `rhwp-core` info | *(probe JSON, not convert metadata)* |
 
 ## Local setup
 
@@ -46,9 +47,17 @@ node scripts/rhwp_probe.mjs export-svg \
   --pages 0
 ```
 
-## SHawn-hwp CLI route
+## SHawn-hwp CLI routes
 
-`hwp -> svg` is now routed through `rhwp-core` when available:
+When `@rhwp/core` is installed, `scripts/convert.py` implements these metadata route keys (see `docs/hwp-hwpx-route-matrix.md`):
+
+| `route` in metadata | Invocation |
+| --- | --- |
+| `rhwp-svg-render` | `--from hwp --to svg` (no `--route`; auto-selected) |
+| `rhwp-layout-to-md` | `--from hwp --to md --route rhwp-layout` |
+| `rhwp-layout-to-docx` | `--from hwp --to docx --route rhwp-layout` |
+
+Accepted `--route` values for layout conversion: `rhwp-layout`, `rhwp-layout-to-md`, `rhwp-layout-to-docx`.
 
 ```bash
 python3 scripts/convert.py \
@@ -57,6 +66,14 @@ python3 scripts/convert.py \
   --to svg \
   --output outputs/rhwp-svg \
   --emit-metadata outputs/rhwp-svg.meta.json
+
+python3 scripts/convert.py \
+  --input data/fixtures/real-hwp/source.hwp \
+  --from hwp \
+  --to md \
+  --route rhwp-layout \
+  --output outputs/rhwp.md \
+  --emit-metadata outputs/rhwp-md.meta.json
 ```
 
 ## Verification performed
